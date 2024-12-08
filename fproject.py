@@ -1,37 +1,52 @@
 import os
 import openai
-from openai import OpenAI
 from dotenv import load_dotenv
+import streamlit as st
 
+# Load environment variables
 load_dotenv()
 
-client = OpenAI(
-        api_key=os.environ.get("OPENAI_API_KEY"),
-    )
+# Set the OpenAI API key
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-messages = [{"role": "assistant", "content": "How can I help?"}]
-
-
-def display_chat_history(messages):
-    for message in messages:
-        print(f"{message['role'].capitalize()}: {message['content']}")
-
+# Initialize the message history
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "How can I help?"}]
 
 def get_assistant_response(messages):
-    r = client.chat.completions.create(
-        model="gpt-4o-mini-2024-07-18",
-        messages=[{"role": m["role"], "content": m["content"]} for m in messages],
+    """
+    Sends a request to OpenAI and retrieves a response from the assistant.
+    """
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages,
     )
-    response = r.choices[0].message.content
-    return response
+    return response["choices"][0]["message"]["content"]
 
+# App title
+st.title("BioQuest")
 
-while True:
-    display_chat_history(messages)
-    
-    prompt = input("User: ")
-    messages.append({"role": "user", "content": prompt})
-    
-    response = get_assistant_response(messages)
-    messages.append({"role": "assistant", "content": response})
+# Display message history
+for message in st.session_state.messages:
+    if message["role"] == "assistant":
+        st.markdown(f"**Assistant**: {message['content']}")
+    else:
+        st.markdown(f"**You**: {message['content']}")
+
+# User input field
+user_input = st.text_input("Your message:", key="user_input")
+
+# Handle user input
+if st.button("Send"):
+    if user_input:
+        # Add the user's message to the history
+        st.session_state.messages.append({"role": "user", "content": user_input})
+
+        # Get the assistant's response
+        assistant_response = get_assistant_response(st.session_state.messages)
+        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+
+        # Refresh the interface
+        st.rerun()  # Updates the interface to show new messages
+
     
